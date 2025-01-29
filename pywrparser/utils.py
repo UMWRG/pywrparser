@@ -59,12 +59,13 @@ def canonical_name(nodename: str, attr: str) -> str:
 
 
 def parse_reference_key(key: str) -> Tuple[str, str]:
+
     end_mark = "__:"
     name_end = key.rindex(end_mark)  # ValueError on fail
     sepidx = name_end + len(end_mark) - 1
     name, attr = key[:sepidx], key[sepidx+1:]
 
-    name_pattern = r"^__[a-zA-Z0-9_ \.\-\(\)]+__$"
+    name_pattern = r"^__[a-zA-Z0-9_ \/\:\.\-\(\)]+__$"
     if not re.search(name_pattern, name):
         raise ValueError(f"Invalid reference: {name}")
 

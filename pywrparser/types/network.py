@@ -1,7 +1,7 @@
 import io
 import logging
 
-from collections import Counter
+from collections import Counter, defaultdict
 from functools import partialmethod
 
 from pywrparser.parsers import PywrJSONParser
@@ -29,6 +29,7 @@ class PywrNetwork():
         self.metadata = parser.metadata
         self.timestepper = parser.timestepper
         self.scenarios = parser.scenarios
+        self.scenario_combinations = parser.scenario_combinations
         self.tables = parser.tables
         self.nodes = parser.nodes
         self.edges = parser.edges
@@ -159,6 +160,9 @@ class PywrNetwork():
         if len(self.scenarios) > 0:
             network["scenarios"] = [s.as_dict() for s in self.scenarios]
 
+        if len(self.scenario_combinations) > 0:
+            network["scenario_combinations"] = [s.as_dict() for s in self.scenario_combinations]
+
         if len(self.tables) > 0:
             network["tables"] = {n: t.as_dict() for n, t in self.tables.items()}
 
@@ -211,6 +215,31 @@ class PywrNetwork():
                     param = PywrParameter(param_name, value)
                     node.data[attr] = param
 
+    def promote_inline_recorders(self):
+        """
+          Promotes inline recorder definitions to instances of
+          :class:`PywrRecorder`.
+
+          Any values of attrs in a node which can be interpreted as
+          an inline (i.e. dict) recorder definition are instantiated
+          as recorders and the attr value replaced with the instance.
+        """
+        exclude = ("name", "type")
+        for node in self.nodes.values():
+            for attr, value in node.data.items():
+                if isinstance(value, dict):
+                    type_key = value.get("type")
+                    if not type_key or "parameter" in type_key.lower():
+                        continue
+                    rec_name = value.get("name")
+                    if not rec_name or rec_name in self.recorders:
+                        rec_name = canonical_name(node.name, attr)
+                    log.debug(f"Creating inline recorder: {rec_name}")
+                    if rec_name in self.recorders:
+                        # Node inline recorder has same name as global recorder
+                        raise ValueError("inline dups global recorder")
+                    recorder = PywrRecorder(rec_name, value)
+                    node.data[attr] = recorder
 
     def attach_reference_parameters(self):
         """
@@ -221,6 +250,7 @@ class PywrNetwork():
           are replaced with the instance of that parameter.
         """
         exclude = ("name", "type")
+        attached_parameters = []
         for node in self.nodes.values():
             for attr, value in node.data.items():
                 if attr.lower() in exclude:
@@ -235,6 +265,39 @@ class PywrNetwork():
                         continue
                     log.debug(f"Attaching global param ref: {value}")
                     node.data[attr] = param
+                    attached_parameters.append(value)
+
+        for attached_parameter in attached_parameters:
+            del(self.parameters[attached_parameter])
+
+    def attach_reference_recorders(self):
+        """
+          Promotes strings which reference recorders to instances of
+          :class:`PywrRecorder`.
+
+          Any values of attrs in a node which resolve to a global recorder
+          are replaced with the instance of that recorder.
+        """
+        exclude = ("name", "type")
+        attached_recorders = []
+        for node in self.nodes.values():
+            for attr, value in node.data.items():
+                if attr.lower() in exclude:
+                    """
+                    A recorder could exist with the same name as a node,
+                    leading to node["name"] = recorder
+                    """
+                    continue
+                if isinstance(value, str):
+                    recorder = self.recorders.get(value)
+                    if not recorder:
+                        continue
+                    log.debug(f"Attaching global recorder ref: {value}")
+                    node.data[attr] = recorder
+                    attached_recorders.append(value)
+
+        for attached_recorder in attached_recorders:
+            del(self.recorders[attached_recorder])
 
 
     def __add_component_references(self, component=None):
@@ -402,3 +465,21 @@ class PywrNetwork():
         """
         edge_count = Counter((n1, n2) for (n1, n2) in self.edges)
         return {edge: count for edge, count in edge_count.items() if count > 1}
+
+
+    def url_references(self):
+        """
+            Return a dict of urls references by parameters, each mapping to
+            a list of the parameters containing that reference.
+        """
+        url_map = defaultdict(list)
+        for p in (param for param in self.parameters.values() if "url" in param.data):
+            url_map[p.data["url"]].append(p)
+
+        for t in (table for table in self.tables.values() if "url" in table.data):
+            url_map[t.data["url"]].append(t)
+
+        for r in (recorder for recorder in self.recorders.values() if "url" in recorder.data):
+            url_map[r.data["url"]].append(r)
+
+        return url_map

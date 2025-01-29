@@ -119,6 +119,7 @@ def configure_args(args):
 
 
 def handle_args(args):
+
     filename = args.filename
     raise_error = args.raise_on_error
     raise_warning = args.raise_on_warning
@@ -171,7 +172,6 @@ def handle_args(args):
         network.add_recorder_references()
         network.promote_inline_parameters()
         network.attach_reference_parameters()
-        network.detach_parameters()
         if args.terse_report:
             report = network.report()
             console.print(report)

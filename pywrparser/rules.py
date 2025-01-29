@@ -53,7 +53,7 @@ def identify_types(module):
     from pywrparser.types.node import PywrNode
     from pywrparser.types.timestepper import PywrTimestepper
     from pywrparser.types.metadata import PywrMetadata
-    from pywrparser.types.scenario import PywrScenario
+    from pywrparser.types.scenario import PywrScenario, PywrScenarioCombination
     from pywrparser.types.table import PywrTable
     from pywrparser.types.parameter import PywrParameter
     from pywrparser.types.recorder import PywrRecorder
@@ -61,7 +61,8 @@ def identify_types(module):
 
     base_types = (
         PywrNode, PywrTimestepper, PywrMetadata, PywrScenario,
-        PywrTable, PywrParameter, PywrRecorder, PywrEdge
+        PywrTable, PywrParameter, PywrRecorder, PywrEdge,
+        PywrScenarioCombination
     )
 
     typemap = {t.__qualname__: t for t in base_types}

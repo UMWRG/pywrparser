@@ -77,3 +77,10 @@ def test_network_add_recorder_references(valid_network_file):
     assert "recorder" not in node.data
     network.add_recorder_references()
     assert "recorder" in node.data
+
+def test_network_promote_inline_recorders(valid_network_file):
+    network, errors, warnings = PywrNetwork.from_file(valid_network_file)
+    node = network.nodes["Node_1"]
+    assert not isinstance(node.data["max_flow"], PywrRecorder)
+    network.promote_inline_recorders()
+    assert isinstance(node.data["max_flow"], PywrRecorder)

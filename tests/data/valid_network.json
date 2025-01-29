@@ -11,12 +11,22 @@
  },
  "scenarios": [
   {
+   "name": "scenario0",
+   "size": 1,
+   "ensemble_names": [
+    "scn0"
+   ]
+  },
+  {
    "name": "scenario1",
    "size": 1,
    "ensemble_names": [
     "scn1"
    ]
   }
+ ],
+ "scenario_combinations": [
+   [0, 1]
  ],
  "nodes": [
   {
