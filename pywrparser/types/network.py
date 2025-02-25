@@ -267,7 +267,7 @@ class PywrNetwork():
                     node.data[attr] = param
                     attached_parameters.append(value)
 
-        for attached_parameter in attached_parameters:
+        for attached_parameter in set(attached_parameters):
             del(self.parameters[attached_parameter])
 
     def attach_reference_recorders(self):
@@ -296,7 +296,7 @@ class PywrNetwork():
                     node.data[attr] = recorder
                     attached_recorders.append(value)
 
-        for attached_recorder in attached_recorders:
+        for attached_recorder in set(attached_recorders):
             del(self.recorders[attached_recorder])
 
 
