@@ -268,7 +268,10 @@ class PywrNetwork():
                     attached_parameters.append(value)
 
         for attached_parameter in attached_parameters:
-            del(self.parameters[attached_parameter])
+            try:
+                del(self.parameters[attached_parameter])
+            except KeyError:
+                pass
 
     def attach_reference_recorders(self):
         """
