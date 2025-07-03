@@ -39,14 +39,6 @@ class PywrParameter(PywrType):
         assert "parameters" in self.data and isinstance(self.data["parameters"], list),\
             f"AggregatedParameter <{self.name}> has invalid parameters"
 
-    @match("constantparameter")
-    def rule_constant_has_value(self):
-        assert "value" in self.data, f"ConstantParameter <{self.name}> does not define 'value'"
-
-    @match("controlcurveparameter")
-    def rule_cc_has_controlcurve(self):
-        assert "control_curve" in self.data, f"ControlCurveParameter <{self.name}> does not define 'control_curve'"
-
     @match("controlcurveparameter")
     def rule_cc_has_storage(self):
         assert "storage_node" in self.data, f"ControlCurveParameter <{self.name}> does not define 'storage_node'"

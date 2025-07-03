@@ -268,7 +268,7 @@ class PywrNetwork():
                     attached_parameters.append(value)
 
         for attached_parameter in attached_parameters:
-            del(self.parameters[attached_parameter])
+            self.parameters.pop(attached_parameter, None)
 
     def attach_reference_recorders(self):
         """
