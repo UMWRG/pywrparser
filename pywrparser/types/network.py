@@ -211,7 +211,7 @@ class PywrNetwork():
                     log.debug(f"Creating inline param: {param_name}")
                     if param_name in self.parameters:
                         # Node inline param has same name as global param
-                        raise ValueError("inline dups global param")
+                        raise ValueError(f"Unable to set {attr} on node {node.name} - specified parameter as a global parameter. Parameter {param_name} is already defined as a parameter.")
                     param = PywrParameter(param_name, value)
                     node.data[attr] = param
 
