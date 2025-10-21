@@ -8,7 +8,8 @@ class PywrEdge(PywrType):
           As node names are always cast to str, these
           must be str in either case.
         """
-        self.data = [str(vert) for vert in data]
+        #cast all vertices to str unless they are None
+        self.data = [str(vert) if vert is not None else None for vert in data]
 
     def __len__(self):
         return len(self.data)
