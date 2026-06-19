@@ -84,3 +84,52 @@ def test_network_promote_inline_recorders(valid_network_file):
     assert not isinstance(node.data["max_flow"], PywrRecorder)
     network.promote_inline_recorders()
     assert isinstance(node.data["max_flow"], PywrRecorder)
+
+
+def test_parameter_reference_updates():
+    """
+    Test that parameter references are correctly updated when parameters
+    are attached to nodes. This verifies the fix for the issue where:
+    1. A parameter is attached to a node attribute (ReservoirArea -> Reservoir.area)
+    2. Another parameter references the attached parameter (PrecipitationVolume -> ReservoirArea)
+    3. The reference should be updated to point to the canonical name (__Reservoir__:area)
+    """
+    network, errors, warnings = PywrNetwork.from_file("data/parameter_reference_test.json")
+    assert network is not None
+    assert errors is None
+
+    # Process through the complete pipeline
+    network.add_parameter_references()
+    network.add_recorder_references()
+    network.promote_inline_parameters()
+    network.attach_reference_parameters()
+
+    # After attach_reference_parameters:
+    # - ReservoirArea should be removed from global parameters
+    # - PrecipitationVolume should be in global parameters with updated reference
+    assert "ReservoirArea" not in network.parameters
+    assert "PrecipitationVolume" in network.parameters
+
+    # PrecipitationVolume should now reference __Reservoir__:area instead of ReservoirArea
+    precip_param = network.parameters["PrecipitationVolume"]
+    assert precip_param.data["type"] == "aggregated"
+    refs = precip_param.data["parameters"]
+    assert "__Reservoir__:area" in refs
+    assert "ReservoirArea" not in refs
+
+    # Detach and export
+    network.detach_parameters()
+    exported = network.as_dict()
+    params = exported.get('parameters', {})
+
+    # Verify no broken references
+    all_param_names = set(params.keys())
+    for param_name, param_data in params.items():
+        if param_data.get('type') == 'aggregated':
+            for ref in param_data.get('parameters', []):
+                assert ref in all_param_names, f"Parameter {param_name} references undefined {ref}"
+
+    # Verify no duplicates (should have exactly one __Reservoir__:area, not both old and new names)
+    reservoir_area_params = [k for k in params.keys() if 'Reservoir' in k and 'area' in k.lower()]
+    assert len(reservoir_area_params) == 1, f"Expected 1 Reservoir area parameter, found {len(reservoir_area_params)}: {reservoir_area_params}"
+    assert reservoir_area_params[0] == "__Reservoir__:area"

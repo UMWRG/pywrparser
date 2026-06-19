@@ -247,10 +247,11 @@ class PywrNetwork():
           :class:`PywrParameter`.
 
           Any values of attrs in a node which resolve to a global parameter
-          are replaced with the instance of that parameter.
+          are replaced with the instance of that parameter. Also updates all
+          references to these parameters in other parameters.
         """
         exclude = ("name", "type")
-        attached_parameters = []
+        attached_parameters = {}
         for node in self.nodes.values():
             for attr, value in node.data.items():
                 if attr.lower() in exclude:
@@ -265,10 +266,50 @@ class PywrNetwork():
                         continue
                     log.debug(f"Attaching global param ref: {value}")
                     node.data[attr] = param
-                    attached_parameters.append(value)
+                    attached_parameters[value] = (node.name, attr)
 
-        for attached_parameter in set(attached_parameters):
-            del(self.parameters[attached_parameter])
+        for old_param_name, (node_name, attr) in attached_parameters.items():
+            canonical_name_str = canonical_name(node_name, attr)
+            self._rename_parameter_references(old_param_name, canonical_name_str)
+
+            if old_param_name in self.parameters:
+                param = self.parameters[old_param_name]
+                param.name = canonical_name_str
+                del self.parameters[old_param_name]
+
+    def _rename_parameter_references(self, old_param_name, new_param_name):
+        """
+        Renames all references to a parameter in other parameters.
+        Scans all parameter data fields for any that might contain references,
+        handling both string and list values. Also handles parameters attached to nodes.
+        """
+        from pywrparser.types import PywrParameter
+
+        for param in self.parameters.values():
+            for key, value in param.data.items():
+                if 'param' in key.lower():
+                    if isinstance(value, str) and value == old_param_name:
+                        param.data[key] = new_param_name
+                        log.debug(f"Updated parameter reference in {param.name}.{key}: {old_param_name} -> {new_param_name}")
+                    elif isinstance(value, list):
+                        for i, ref in enumerate(value):
+                            if ref == old_param_name:
+                                param.data[key][i] = new_param_name
+                                log.debug(f"Updated parameter reference in {param.name}.{key}[{i}]: {old_param_name} -> {new_param_name}")
+
+        for node in self.nodes.values():
+            for attr, value in node.data.items():
+                if isinstance(value, PywrParameter):
+                    for key, data_value in value.data.items():
+                        if 'param' in key.lower():
+                            if isinstance(data_value, str) and data_value == old_param_name:
+                                value.data[key] = new_param_name
+                                log.debug(f"Updated parameter reference in attached {value.name}.{key}: {old_param_name} -> {new_param_name}")
+                            elif isinstance(data_value, list):
+                                for i, ref in enumerate(data_value):
+                                    if ref == old_param_name:
+                                        value.data[key][i] = new_param_name
+                                        log.debug(f"Updated parameter reference in attached {value.name}.{key}[{i}]: {old_param_name} -> {new_param_name}")
 
     def attach_reference_recorders(self):
         """
